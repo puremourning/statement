@@ -1,6 +1,7 @@
 #ifndef STATEMENT_STATEMODEL_H
 #define STATEMENT_STATEMODEL_H
 
+#include <functional>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -62,7 +63,9 @@ namespace statement {
           switch((size_t)transition.action) {
 #define STATEMENT_STATEMODEL_ACTION_CASE(action) \
           case action: \
-            handler(Tag<(Action)action>{}, std::forward<Args>(args)...);\
+            std::invoke(handler, \
+                        Tag<(Action)action>{}, \
+                        std::forward<Args>(args)...);\
             break
 
             STATEMENT_STATEMODEL_ACTION_CASE(0);

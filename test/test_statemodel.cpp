@@ -34,6 +34,8 @@ namespace
       Eight,
       Nine,
       Ten,
+      Eleven,
+      Twelve,
 
       Count,
     };

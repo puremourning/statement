@@ -40,8 +40,6 @@ namespace statement {
     using Action = typename Traits::Action;
     using State = typename Traits::State;
 
-    static_assert((size_t)Action::Count <= 10, "Too many actions");
-
     template<Action action>
     using Tag = std::integral_constant<Action, action>;
 
@@ -60,28 +58,10 @@ namespace statement {
       for (auto transition : Traits::model) {
         if (transition.initial == state && transition.event == event) {
           state = transition.final;
-          switch((size_t)transition.action) {
-#define STATEMENT_STATEMODEL_ACTION_CASE(action) \
-          case action: \
-            std::invoke(handler, \
-                        Tag<(Action)action>{}, \
-                        std::forward<Args>(args)...);\
-            break
-
-            STATEMENT_STATEMODEL_ACTION_CASE(0);
-            STATEMENT_STATEMODEL_ACTION_CASE(1);
-            STATEMENT_STATEMODEL_ACTION_CASE(2);
-            STATEMENT_STATEMODEL_ACTION_CASE(3);
-            STATEMENT_STATEMODEL_ACTION_CASE(4);
-            STATEMENT_STATEMODEL_ACTION_CASE(5);
-            STATEMENT_STATEMODEL_ACTION_CASE(6);
-            STATEMENT_STATEMODEL_ACTION_CASE(7);
-            STATEMENT_STATEMODEL_ACTION_CASE(8);
-            STATEMENT_STATEMODEL_ACTION_CASE(9);
-            STATEMENT_STATEMODEL_ACTION_CASE(10);
-
-#undef STATEMENT_STATEMODEL_ACTION_CASE
-          }
+          dispatch_action(handler,
+                          (IAction)transition.action,
+                          std::make_integer_sequence<IAction, (IAction)Action::Count>{},
+                          std::forward<Args>(args)...);
           return;
         }
       }
@@ -95,6 +75,25 @@ namespace statement {
       Action action;
     };
     using Model = std::vector<Transition>;
+
+    using IAction = std::underlying_type_t<Action>;
+
+    template<typename Handler, typename... Args, IAction... Is>
+    void dispatch_action(Handler& handler,
+                         IAction action,
+                         std::integer_sequence<IAction, Is...> action_seq,
+                         Args&&... args)
+    {
+      auto do_action = [&](auto candidate) {
+        if ((IAction)candidate.value == action) {
+          std::invoke(handler,
+                      candidate,
+                      std::forward<Args>(args)...);
+        }
+      };
+      (do_action(Tag<(Action)Is>{}), ...);
+    }
+
   };
 }
 

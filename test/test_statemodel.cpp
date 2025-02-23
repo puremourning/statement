@@ -74,5 +74,5 @@ int main(int argc, char **argv)
   );
 
   manager.on(h, ModelTraits::Event::StartRequest, argc);
-  manager.on(h, ModelTraits::Event::StopRequest, 'a');
+  manager.on(h, ModelTraits::Event::StopRequest, (char)('a' + argc));
 }

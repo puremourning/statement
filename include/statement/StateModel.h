@@ -1,6 +1,7 @@
 #ifndef STATEMENT_STATEMODEL_H
 #define STATEMENT_STATEMODEL_H
 
+#include <stdexcept>
 #include <functional>
 #include <type_traits>
 #include <utility>
@@ -59,8 +60,8 @@ namespace statement {
         if (transition.initial == state && transition.event == event) {
           state = transition.final;
           dispatch_action(handler,
-                          (IAction)transition.action,
-                          std::make_integer_sequence<IAction, (IAction)Action::Count>{},
+                          (UAction)transition.action,
+                          std::make_integer_sequence<UAction, (UAction)Action::Count>{},
                           std::forward<Args>(args)...);
           return;
         }
@@ -76,16 +77,16 @@ namespace statement {
     };
     using Model = std::vector<Transition>;
 
-    using IAction = std::underlying_type_t<Action>;
+    using UAction = std::underlying_type_t<Action>;
 
-    template<typename Handler, typename... Args, IAction... Is>
+    template<typename Handler, typename... Args, UAction... Is>
     void dispatch_action(Handler& handler,
-                         IAction action,
-                         std::integer_sequence<IAction, Is...> action_seq,
+                         UAction action,
+                         std::integer_sequence<UAction, Is...> action_seq,
                          Args&&... args)
     {
       auto do_action = [&](auto candidate) {
-        if ((IAction)candidate.value == action) {
+        if ((UAction)candidate.value == action) {
           std::invoke(handler,
                       candidate,
                       std::forward<Args>(args)...);

@@ -96,9 +96,7 @@ namespace statement {
 
   private:
     Handler handler;
-    using Transition = Transition<State, Event, Action>;
-    using Model = std::vector<Transition>;
-    Model model;
+    Model<State, Event, Action> model;
 
     using UAction = std::underlying_type_t<Action>;
 

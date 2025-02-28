@@ -4,9 +4,8 @@
 
 namespace
 {
-  struct ModelTraits
+  struct StateModel
   {
-    using Manager = statement::Manager<ModelTraits>;
     enum class State {
       Disconnected,
       Connecting,
@@ -40,39 +39,39 @@ namespace
       Count,
     };
 
-    static constexpr auto initial_state = State::Disconnected;
-
-    inline static constexpr Manager::Transition model[] = {
-      { State::Disconnected,    Event::StartRequest,
-        State::Connecting,      Action::StartConnecting },
-
-      { State::Connecting,      Event::Connected,
-        State::Connected,       Action::StartDisconnecting },
-      { State::Connecting,      Event::StopRequest,
-        State::Disconnecting,   Action::StartDisconnecting },
-
-      { State::Connected,       Event::StopRequest,
-        State::Disconnecting,   Action::StartDisconnecting },
-
-      { State::Disconnecting,   Event::Disconnected,
-        State::Disconnected,    Action::StartConnecting },
-    };
+    using Model = statement::Model<State, Event, Action>;
+    template <Action action>
+    using Tag = statement::Tag<Action, action>;
   };
 }
 
 int main(int argc, char **argv)
 {
-  using Manager = ModelTraits::Manager;
-  Manager manager;
-  auto h = Manager::make_handler(
-    [](Manager::Tag<ModelTraits::Action::StartConnecting>, int i) {
+  statement::Manager manager{
+    StateModel::State::Disconnected,
+    StateModel::Model{
+      { StateModel::State::Disconnected,    StateModel::Event::StartRequest,
+        StateModel::State::Connecting,      StateModel::Action::StartConnecting },
+
+      { StateModel::State::Connecting,      StateModel::Event::Connected,
+        StateModel::State::Connected,       StateModel::Action::StartDisconnecting },
+      { StateModel::State::Connecting,      StateModel::Event::StopRequest,
+        StateModel::State::Disconnecting,   StateModel::Action::StartDisconnecting },
+
+      { StateModel::State::Connected,       StateModel::Event::StopRequest,
+        StateModel::State::Disconnecting,   StateModel::Action::StartDisconnecting },
+
+      { StateModel::State::Disconnecting,   StateModel::Event::Disconnected,
+        StateModel::State::Disconnected,    StateModel::Action::StartConnecting },
+    },
+    [](StateModel::Tag<StateModel::Action::StartConnecting>, int i) {
       std::cout << "StartConnecting " << i << std::endl;
     },
-    [](Manager::Tag<ModelTraits::Action::StartDisconnecting>, char y) {
+    [](StateModel::Tag<StateModel::Action::StartDisconnecting>, char y) {
       std::cout << "StartDisconnecting " << y << std::endl;
     }
-  );
+  };
 
-  manager.on(h, ModelTraits::Event::StartRequest, argc);
-  manager.on(h, ModelTraits::Event::StopRequest, (char)('a' + argc));
+  manager.on(StateModel::Event::StartRequest, argc);
+  manager.on(StateModel::Event::StopRequest, (char)('a' + argc));
 }

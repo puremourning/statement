@@ -34,33 +34,59 @@ namespace statement {
 
   }
 
-  template <typename Traits>
+  template <typename State, typename Event, typename Action>
+  struct Transition
+  {
+    State initial;
+    Event event;
+    State final;
+    Action action;
+  };
+
+  template<typename Action, Action action>
+  using Tag = std::integral_constant<Action, action>;
+
+  template<typename... Handlers>
+  static constexpr decltype(auto) make_handler(Handlers&&... handlers)
+  {
+    return detail::HandlerImpl<std::decay_t<Handlers>...>(
+      std::forward<Handlers>(handlers)...);
+  }
+
+  template<typename State, typename Event, typename Action>
+  using Model = std::vector<Transition<State, Event, Action>>;
+
+  template <typename State, typename Event, typename Action, typename Handler>
   struct Manager
   {
-    using Event = typename Traits::Event;
-    using Action = typename Traits::Action;
-    using State = typename Traits::State;
+    State state;
 
     template<Action action>
-    using Tag = std::integral_constant<Action, action>;
+    using Tag = Tag<Action, action>;
 
-    template<typename... Handlers>
-    static constexpr decltype(auto) make_handler(Handlers&&... handlers)
+    template<typename Model_, typename... Handlers>
+    Manager(State initial_state, Model_&& model, Handlers&&... handlers)
+      : state{initial_state}
+      , handler{std::forward<Handlers>(handlers)...}
+      , model{std::forward<Model_>(model)}
     {
-      return detail::HandlerImpl<std::decay_t<Handlers>...>(
-        std::forward<Handlers>(handlers)...);
     }
 
-    State state = Traits::initial_state;
-
-    template<typename Handler, typename... Args>
-    void on(Handler& handler, Event event, Args&&... args)
+    template<typename Model_, typename Handler_>
+    Manager(State initial_state, Model_&& model, Handler_&& handler_)
+      : state{initial_state}
+      , handler{std::forward<Handler_>(handler_)}
+      , model{std::forward<Model_>(model)}
     {
-      for (auto transition : Traits::model) {
+    }
+
+    template<typename... Args>
+    void on(Event event, Args&&... args)
+    {
+      for (const auto& transition : model) {
         if (transition.initial == state && transition.event == event) {
           state = transition.final;
-          dispatch_action(handler,
-                          (UAction)transition.action,
+          dispatch_action((UAction)transition.action,
                           std::make_integer_sequence<UAction, (UAction)Action::Count>{},
                           std::forward<Args>(args)...);
           return;
@@ -68,20 +94,16 @@ namespace statement {
       }
     }
 
-    struct Transition
-    {
-      State initial;
-      Event event;
-      State final;
-      Action action;
-    };
+  private:
+    Handler handler;
+    using Transition = Transition<State, Event, Action>;
     using Model = std::vector<Transition>;
+    Model model;
 
     using UAction = std::underlying_type_t<Action>;
 
-    template<typename Handler, typename... Args, UAction... Is>
-    void dispatch_action(Handler& handler,
-                         UAction action,
+    template<typename... Args, UAction... Is>
+    void dispatch_action(UAction action,
                          std::integer_sequence<UAction, Is...> action_seq,
                          Args&&... args)
     {
@@ -96,6 +118,16 @@ namespace statement {
     }
 
   };
+
+  template<typename State,
+           typename Event,
+           typename Action,
+           typename... Handlers>
+  Manager(State initial_state,
+          Model<State, Event, Action> model,
+          Handlers&&... handlers)
+    -> Manager<State, Event, Action, detail::HandlerImpl<Handlers...>>;
+
 }
 
 #endif // STATEMENT_STATEMODEL_H

@@ -276,6 +276,27 @@ namespace
     t.start();
     return (t.manager.state == SimpleStateModel::State::Connected) ? 0 : 1;
   }
+
+  int test_handle_event()
+  {
+    SimpleStateModel::Model model{
+      { SimpleStateModel::State::Disconnected,    SimpleStateModel::Event::StartRequest,
+        SimpleStateModel::State::Connected,       SimpleStateModel::Action::StartConnecting },
+    };
+    SimpleStateModel::State state = SimpleStateModel::State::Disconnected;
+
+    auto h = statement::make_handler<SimpleStateModel::Action>(
+      [](SimpleStateModel::Tag<SimpleStateModel::Action::StartConnecting>) {
+      }
+    );
+
+    statement::handle_event(state,
+                            model,
+                            h,
+                            SimpleStateModel::Event::StartRequest);
+
+    return (state == SimpleStateModel::State::Connected) ? 0 : 1;
+  }
 }
 
 int main(int argc, char **argv)
@@ -287,5 +308,6 @@ int main(int argc, char **argv)
       + test_invalid_action(argc, argv)
       + test_clever_type(argc, argv)
       + test_mutable()
+      + test_handle_event()
       ;
 }

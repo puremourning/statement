@@ -125,6 +125,8 @@ namespace
 
   int test_simple_type(int argc, char **argv)
   {
+    // FIXME: This API is bad. Need a way to deduce this better or at least make it
+    // simpler to do this way.
     auto h = statement::make_handler<StateModel::Action>(
         [](StateModel::Tag<StateModel::Action::StartConnecting>, int i) {
           std::cout << "StartConnecting " << i << std::endl;
@@ -212,6 +214,8 @@ namespace
   };
   int test_clever_type(int argc, char **argv)
   {
+    // FIXME: This API is bad. Need a way to deduce this better or at least make it
+    // simpler to do this way with CTAD.
     statement::Manager<StateModel::State, StateModel::Event, StateModel::Action, H> manager{
       StateModel::State::Disconnected,
       StateModel::Model{
@@ -255,10 +259,35 @@ namespace
     manager.on(StateModel::Event::StartRequest);
     return 0;
   }
+
+  struct Thing
+  {
+    statement::Manager<SimpleStateModel::State, SimpleStateModel::Event, SimpleStateModel::Action> manager{
+      SimpleStateModel::State::Disconnected,
+      SimpleStateModel::Model{
+        { SimpleStateModel::State::Disconnected,    SimpleStateModel::Event::StartRequest,
+          SimpleStateModel::State::Connected,       SimpleStateModel::Action::StartConnecting },
+      }
+    };
+
+    void start()
+    {
+      manager.on(*this, SimpleStateModel::Event::StartRequest);
+    }
+
+    void operator()(SimpleStateModel::Tag<SimpleStateModel::Action::StartConnecting>) {
+    }
+    void operator()(SimpleStateModel::Tag<SimpleStateModel::Action::None>) {
+    }
+  };
 }
 
 int main(int argc, char **argv)
 {
+  Thing t;
+  t.start();
+  assert(t.manager.state == SimpleStateModel::State::Connected);
+
   return
     test_simple_pack(argc, argv)
       + test_simple_type(argc, argv)

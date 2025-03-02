@@ -2,7 +2,6 @@
 #define STATEMENT_STATEMODEL_H
 
 #include <stdexcept>
-#include <functional>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -60,7 +59,7 @@ namespace statement {
   template<typename State, typename Event, typename Action>
   using Model = std::vector<Transition<State, Event, Action>>;
 
-  template <typename State, typename Event, typename Action, typename Handler>
+  template <typename State, typename Event, typename Action, typename Handler=void>
   struct Manager
   {
     State state;
@@ -120,11 +119,68 @@ namespace statement {
 
   };
 
+  template <typename State, typename Event, typename Action>
+  struct Manager<State, Event, Action, void>
+  {
+    State state;
+
+    template<Action action>
+    using Tag = Tag<Action, action>;
+
+    template<typename Model_, typename... Handlers>
+    Manager(State initial_state, Model_&& model)
+      : state{initial_state}
+      , model{std::forward<Model_>(model)}
+    {
+    }
+
+    template<typename Handler, typename... Args>
+    void on(Handler&& handler, Event event, Args&&... args)
+    {
+      for (const auto& transition : model) {
+        if (transition.initial == state && transition.event == event) {
+          state = transition.final;
+          dispatch_action(handler,
+                          (UAction)transition.action,
+                          std::make_integer_sequence<UAction, (UAction)Action::Count>{},
+                          std::forward<std::decay_t<Args>>(args)...);
+          return;
+        }
+      }
+    }
+
+  private:
+    const Model<State, Event, Action> model;
+
+    using UAction = std::underlying_type_t<Action>;
+
+    template<typename Handler, typename... Args, UAction... Is>
+    constexpr void dispatch_action(Handler&& handler,
+                                   UAction action,
+                                   std::integer_sequence<UAction, Is...> action_seq,
+                                   Args&&... args)
+    {
+      auto do_action = [&](auto candidate) {
+        if ((UAction)candidate.value == action) {
+          handler(candidate,
+                  std::forward<std::decay_t<Args>>(args)...);
+        }
+      };
+      (do_action(Tag<(Action)Is>{}), ...);
+    }
+
+  };
+
   template<typename State, typename Event, typename Action, Action ActionNone=Action::None, typename... Handlers>
   Manager(State initial_state,
           Model<State, Event, Action> model,
           Handlers&&... handlers)
-    -> Manager<State, Event, Action, detail::HandlerImpl<Action, ActionNone, Handlers...>>;
+    -> Manager<State, Event, Action, detail::HandlerImpl<Action, ActionNone, std::decay_t<Handlers>...>>;
+
+  template<typename State, typename Event, typename Action, Action ActionNone=Action::None>
+  Manager(State initial_state,
+          Model<State, Event, Action> model)
+    -> Manager<State, Event, Action, void>;
 }
 
 #endif // STATEMENT_STATEMODEL_H

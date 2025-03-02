@@ -148,3 +148,31 @@ There are 3 ways to supply action handlers:
    and event arguments
 
 See `tests/test_statement.cpp` for examples of all 3.
+
+When the state mamanger is a member of a class, you can pass the handler
+'object' as argument to the `on` method.
+
+```c++
+  struct Thing
+  {
+    statement::Manager<SimpleStateModel::State, SimpleStateModel::Event, SimpleStateModel::Action> manager{
+      SimpleStateModel::State::Disconnected,
+      SimpleStateModel::Model{
+        { SimpleStateModel::State::Disconnected,    SimpleStateModel::Event::StartRequest,
+          SimpleStateModel::State::Connected,       SimpleStateModel::Action::StartConnecting },
+      }
+    };
+
+    Thing() {
+    }
+
+    void start() {
+      manager.on(*this, SimpleStateModel::Event::StartRequest);
+    }
+
+    void operator()(SimpleStateModel::Tag<SimpleStateModel::Action::StartConnecting>) {
+    }
+    void operator()(SimpleStateModel::Tag<SimpleStateModel::Action::None>) {
+    }
+  };
+```

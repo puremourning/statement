@@ -39,11 +39,16 @@ namespace statement {
       using NoAction<Action, ActionNone>::operator();
     };
 
-    template<typename Action, typename Handler, typename... Args, typename UAction = std::underlying_type_t<Action>, UAction... Is>
-    constexpr void dispatch_action(Handler&& handler,
-                                   UAction action,
-                                   std::integer_sequence<UAction, Is...> action_seq,
-                                   Args&&... args)
+    template<
+      typename Action,
+      typename Handler,
+      typename... Args,
+      typename UAction = std::underlying_type_t<Action>, UAction... Is>
+    constexpr void dispatch_action(
+      Handler&& handler,
+      UAction action,
+      std::integer_sequence<UAction, Is...> action_seq,
+      Args&&... args)
     {
       auto do_action = [&](auto candidate) {
         if ((UAction)candidate.value == action) {
@@ -89,7 +94,10 @@ namespace statement {
     Action action;
   };
 
-  template<typename Action, Action ActionNone=Action::None, typename... Handlers>
+  template<
+    typename Action,
+    Action ActionNone=Action::None,
+    typename... Handlers>
   static constexpr decltype(auto) make_handler(Handlers&&... handlers)
   {
     return detail::HandlerImpl<Action, ActionNone, Handlers...>(
@@ -99,7 +107,11 @@ namespace statement {
   template<typename State, typename Event, typename Action>
   using Model = std::vector<Transition<State, Event, Action>>;
 
-  template <typename State, typename Event, typename Action, typename Handler=void>
+  template<
+    typename State,
+    typename Event,
+    typename Action,
+    typename Handler=void>
   struct Manager
   {
     State state;
@@ -126,7 +138,11 @@ namespace statement {
     template<typename... Args>
     void on(Event event, Args&&... args)
     {
-      detail::handle_event<Action>(state, event, model, handler, std::forward<Args>(args)...);
+      detail::handle_event<Action>(state,
+                                   event,
+                                   model,
+                                   handler,
+                                   std::forward<Args>(args)...);
     }
 
   private:
@@ -154,7 +170,11 @@ namespace statement {
     template<typename Handler, typename... Args>
     void on(Handler&& handler, Event event, Args&&... args)
     {
-      detail::handle_event<Action>(state, event, model, handler, std::forward<Args>(args)...);
+      detail::handle_event<Action>(state,
+                                   event,
+                                   model,
+                                   handler,
+                                   std::forward<Args>(args)...);
     }
 
   private:
@@ -164,13 +184,25 @@ namespace statement {
 
   };
 
-  template<typename State, typename Event, typename Action, Action ActionNone=Action::None, typename... Handlers>
+  template<
+    typename State,
+    typename Event,
+    typename Action,
+    Action ActionNone=Action::None,
+    typename... Handlers>
   Manager(State initial_state,
           Model<State, Event, Action> model,
           Handlers&&... handlers)
-    -> Manager<State, Event, Action, detail::HandlerImpl<Action, ActionNone, Handlers...>>;
+    -> Manager<State,
+               Event,
+               Action,
+               detail::HandlerImpl<Action, ActionNone, Handlers...>>;
 
-  template<typename State, typename Event, typename Action, Action ActionNone=Action::None>
+  template<
+    typename State,
+    typename Event,
+    typename Action,
+    Action ActionNone=Action::None>
   Manager(State initial_state,
           Model<State, Event, Action> model)
     -> Manager<State, Event, Action, void>;

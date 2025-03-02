@@ -78,9 +78,9 @@ namespace statement {
             typename UAction = std::underlying_type_t<Action>,
             typename... Args>
   void handle_event(State& state,
-                    Event event,
                     const Model<State, Event, Action>& model,
                     Handler&& handler,
+                    Event event,
                     Args&&... args)
   {
     for (const auto& transition : model) {
@@ -134,7 +134,7 @@ namespace statement {
     template<typename... Args>
     void on(Event event, Args&&... args)
     {
-      handle_event(state, event, model, handler, std::forward<Args>(args)...);
+      handle_event(state, model, handler, event, std::forward<Args>(args)...);
     }
 
   private:
@@ -157,7 +157,7 @@ namespace statement {
     template<typename Handler, typename... Args>
     void on(Handler&& handler, Event event, Args&&... args)
     {
-      handle_event(state, event, model, handler, std::forward<Args>(args)...);
+      handle_event(state, model, handler, event, std::forward<Args>(args)...);
     }
 
   private:

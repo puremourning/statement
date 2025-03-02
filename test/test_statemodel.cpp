@@ -280,13 +280,16 @@ namespace
     void operator()(SimpleStateModel::Tag<SimpleStateModel::Action::None>) {
     }
   };
+  int test_member()
+  {
+    Thing t;
+    t.start();
+    return (t.manager.state == SimpleStateModel::State::Connected) ? 0 : 1;
+  }
 }
 
 int main(int argc, char **argv)
 {
-  Thing t;
-  t.start();
-  assert(t.manager.state == SimpleStateModel::State::Connected);
 
   return
     test_simple_pack(argc, argv)

@@ -163,9 +163,6 @@ When the state mamanger is a member of a class, you can pass the handler
       }
     };
 
-    Thing() {
-    }
-
     void start() {
       manager.on(*this, SimpleStateModel::Event::StartRequest);
     }

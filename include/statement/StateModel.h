@@ -9,17 +9,27 @@
 
 namespace statement {
 
+
+  template<typename Action, Action action>
+  using Tag = std::integral_constant<Action, action>;
+
   namespace detail {
+    template<typename Action, Action ActionNone>
     struct NoAction {
       template<typename... Args>
       void operator()(Args&&...) const
       {
         throw std::runtime_error("No handler for action");
       }
+
+      template<typename... Args>
+      void operator()(Tag<Action, ActionNone>, Args&&...) const
+      {
+      }
     };
 
-    template<typename... Handlers>
-    struct HandlerImpl : detail::NoAction, Handlers...
+    template<typename Action, Action ActionNone, typename... Handlers>
+    struct HandlerImpl : detail::NoAction<Action, ActionNone>, Handlers...
     {
       HandlerImpl(Handlers&&... handlers)
         : Handlers(std::forward<Handlers>(handlers))...
@@ -27,11 +37,8 @@ namespace statement {
       }
 
       using Handlers::operator()...;
-      using NoAction::operator();
+      using NoAction<Action, ActionNone>::operator();
     };
-    template<typename... Handlers>
-    HandlerImpl(Handlers&&...) -> HandlerImpl<Handlers...>;
-
   }
 
   template <typename State, typename Event, typename Action>
@@ -43,14 +50,11 @@ namespace statement {
     Action action;
   };
 
-  template<typename Action, Action action>
-  using Tag = std::integral_constant<Action, action>;
-
-  template<typename... Handlers>
+  template<typename Action, Action ActionNone=Action::None, typename... Handlers>
   static constexpr decltype(auto) make_handler(Handlers&&... handlers)
   {
-    return detail::HandlerImpl<std::decay_t<Handlers>...>(
-      std::forward<Handlers>(handlers)...);
+    return detail::HandlerImpl<Action, ActionNone, std::decay_t<Handlers>...>(
+      std::forward<std::decay_t<Handlers>>(handlers)...);
   }
 
   template<typename State, typename Event, typename Action>
@@ -67,7 +71,7 @@ namespace statement {
     template<typename Model_, typename... Handlers>
     Manager(State initial_state, Model_&& model, Handlers&&... handlers)
       : state{initial_state}
-      , handler{std::forward<Handlers>(handlers)...}
+      , handler{std::forward<std::decay_t<Handlers>>(handlers)...}
       , model{std::forward<Model_>(model)}
     {
     }
@@ -88,7 +92,7 @@ namespace statement {
           state = transition.final;
           dispatch_action((UAction)transition.action,
                           std::make_integer_sequence<UAction, (UAction)Action::Count>{},
-                          std::forward<Args>(args)...);
+                          std::forward<std::decay_t<Args>>(args)...);
           return;
         }
       }
@@ -96,20 +100,19 @@ namespace statement {
 
   private:
     Handler handler;
-    Model<State, Event, Action> model;
+    const Model<State, Event, Action> model;
 
     using UAction = std::underlying_type_t<Action>;
 
     template<typename... Args, UAction... Is>
-    void dispatch_action(UAction action,
-                         std::integer_sequence<UAction, Is...> action_seq,
-                         Args&&... args)
+    constexpr void dispatch_action(UAction action,
+                                   std::integer_sequence<UAction, Is...> action_seq,
+                                   Args&&... args)
     {
       auto do_action = [&](auto candidate) {
         if ((UAction)candidate.value == action) {
-          std::invoke(handler,
-                      candidate,
-                      std::forward<Args>(args)...);
+          handler(candidate,
+                  std::forward<std::decay_t<Args>>(args)...);
         }
       };
       (do_action(Tag<(Action)Is>{}), ...);
@@ -117,15 +120,11 @@ namespace statement {
 
   };
 
-  template<typename State,
-           typename Event,
-           typename Action,
-           typename... Handlers>
+  template<typename State, typename Event, typename Action, Action ActionNone=Action::None, typename... Handlers>
   Manager(State initial_state,
           Model<State, Event, Action> model,
           Handlers&&... handlers)
-    -> Manager<State, Event, Action, detail::HandlerImpl<Handlers...>>;
-
+    -> Manager<State, Event, Action, detail::HandlerImpl<Action, ActionNone, Handlers...>>;
 }
 
 #endif // STATEMENT_STATEMODEL_H

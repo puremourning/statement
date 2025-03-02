@@ -279,6 +279,8 @@ namespace
 
   int test_handle_event()
   {
+    // statement::Manager is optional. You can just use handle_event directly
+    // if you want.
     SimpleStateModel::Model model{
       { SimpleStateModel::State::Disconnected,    SimpleStateModel::Event::StartRequest,
         SimpleStateModel::State::Connected,       SimpleStateModel::Action::StartConnecting },

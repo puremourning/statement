@@ -55,6 +55,27 @@ Example usage:
 // use manager.state if you really want to
 ```
 
+Alternatively, you can forego `statement::Manager` entirely. The entire library
+is just one function `handle_event`:
+
+```c++
+    SimpleStateModel::Model model{
+      { SimpleStateModel::State::Disconnected,    SimpleStateModel::Event::StartRequest,
+        SimpleStateModel::State::Connected,       SimpleStateModel::Action::StartConnecting },
+    };
+    SimpleStateModel::State state = SimpleStateModel::State::Disconnected;
+    auto h = statement::make_handler<SimpleStateModel::Action>(
+      [](SimpleStateModel::Tag<SimpleStateModel::Action::StartConnecting>) {
+      }
+    );
+    statement::handle_event(state,
+                            model,
+                            h,
+                            SimpleStateModel::Event::StartRequest);
+
+    assert(state == SimpleStateModel::State::Connected);
+```
+
 ## Features
 
 A state model is an initial state and list of transitions, each of which is a

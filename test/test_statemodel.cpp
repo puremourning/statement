@@ -10,13 +10,9 @@ namespace
     enum class State {
       Disconnected,
       Connected,
-
-      Count,
     };
     enum class Event {
       StartRequest,
-
-      Count,
     };
     enum class Action {
       None,
@@ -36,16 +32,12 @@ namespace
       Connecting,
       Connected,
       Disconnecting,
-
-      Count,
     };
     enum class Event {
       StartRequest,
       StopRequest,
       Connected,
       Disconnected,
-
-      Count,
     };
     enum class Action {
       None,
@@ -270,8 +262,7 @@ namespace
       }
     };
 
-    void start()
-    {
+    void start() {
       manager.on(*this, SimpleStateModel::Event::StartRequest);
     }
 

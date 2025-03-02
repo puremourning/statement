@@ -38,6 +38,21 @@ namespace statement {
       using Handlers::operator()...;
       using NoAction<Action, ActionNone>::operator();
     };
+
+    template<typename Action, typename Handler, typename... Args, typename UAction = std::underlying_type_t<Action>, UAction... Is>
+    constexpr void dispatch_action(Handler&& handler,
+                                   UAction action,
+                                   std::integer_sequence<UAction, Is...> action_seq,
+                                   Args&&... args)
+    {
+      auto do_action = [&](auto candidate) {
+        if ((UAction)candidate.value == action) {
+          handler(candidate, std::forward<std::decay_t<Args>>(args)...);
+        }
+      };
+      (do_action(Tag<Action, (Action)Is>{}), ...);
+    }
+
   }
 
   template <typename State, typename Event, typename Action>
@@ -89,9 +104,11 @@ namespace statement {
       for (const auto& transition : model) {
         if (transition.initial == state && transition.event == event) {
           state = transition.final;
-          dispatch_action((UAction)transition.action,
-                          std::make_integer_sequence<UAction, (UAction)Action::Count>{},
-                          std::forward<std::decay_t<Args>>(args)...);
+          detail::dispatch_action<Action>(
+            handler,
+            (UAction)transition.action,
+            std::make_integer_sequence<UAction, (UAction)Action::Count>{},
+            std::forward<std::decay_t<Args>>(args)...);
           return;
         }
       }
@@ -102,21 +119,6 @@ namespace statement {
     const Model<State, Event, Action> model;
 
     using UAction = std::underlying_type_t<Action>;
-
-    template<typename... Args, UAction... Is>
-    constexpr void dispatch_action(UAction action,
-                                   std::integer_sequence<UAction, Is...> action_seq,
-                                   Args&&... args)
-    {
-      auto do_action = [&](auto candidate) {
-        if ((UAction)candidate.value == action) {
-          handler(candidate,
-                  std::forward<std::decay_t<Args>>(args)...);
-        }
-      };
-      (do_action(Tag<(Action)Is>{}), ...);
-    }
-
   };
 
   template <typename State, typename Event, typename Action>
@@ -140,10 +142,11 @@ namespace statement {
       for (const auto& transition : model) {
         if (transition.initial == state && transition.event == event) {
           state = transition.final;
-          dispatch_action(handler,
-                          (UAction)transition.action,
-                          std::make_integer_sequence<UAction, (UAction)Action::Count>{},
-                          std::forward<std::decay_t<Args>>(args)...);
+          detail::dispatch_action<Action>(
+            handler,
+            (UAction)transition.action,
+            std::make_integer_sequence<UAction, (UAction)Action::Count>{},
+            std::forward<std::decay_t<Args>>(args)...);
           return;
         }
       }
@@ -153,21 +156,6 @@ namespace statement {
     const Model<State, Event, Action> model;
 
     using UAction = std::underlying_type_t<Action>;
-
-    template<typename Handler, typename... Args, UAction... Is>
-    constexpr void dispatch_action(Handler&& handler,
-                                   UAction action,
-                                   std::integer_sequence<UAction, Is...> action_seq,
-                                   Args&&... args)
-    {
-      auto do_action = [&](auto candidate) {
-        if ((UAction)candidate.value == action) {
-          handler(candidate,
-                  std::forward<std::decay_t<Args>>(args)...);
-        }
-      };
-      (do_action(Tag<(Action)Is>{}), ...);
-    }
 
   };
 

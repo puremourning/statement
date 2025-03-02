@@ -80,7 +80,6 @@ namespace statement {
             typename Event,
             typename Action,
             typename Handler,
-            typename UAction = std::underlying_type_t<Action>,
             typename... Args>
   void handle_event(State& state,
                     const Model<State, Event, Action>& model,
@@ -88,6 +87,7 @@ namespace statement {
                     Event event,
                     Args&&... args)
   {
+    using UAction = std::underlying_type_t<Action>;
     // TODO: @Speed
     // This is a linear search. We could do a binary search if the model is
     // sorted by initial state and event.

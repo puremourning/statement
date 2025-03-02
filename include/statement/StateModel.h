@@ -8,7 +8,6 @@
 
 namespace statement {
 
-
   template<typename Action, Action action>
   using Tag = std::integral_constant<Action, action>;
 
@@ -116,9 +115,6 @@ namespace statement {
   {
     State state;
 
-    template<Action action>
-    using Tag = Tag<Action, action>;
-
     template<typename Model_, typename... Handlers>
     Manager(State initial_state, Model_&& model, Handlers&&... handlers)
       : state{initial_state}
@@ -148,17 +144,12 @@ namespace statement {
   private:
     Handler handler;
     const Model<State, Event, Action> model;
-
-    using UAction = std::underlying_type_t<Action>;
   };
 
   template <typename State, typename Event, typename Action>
   struct Manager<State, Event, Action, void>
   {
     State state;
-
-    template<Action action>
-    using Tag = Tag<Action, action>;
 
     template<typename Model_, typename... Handlers>
     Manager(State initial_state, Model_&& model)
@@ -179,9 +170,6 @@ namespace statement {
 
   private:
     const Model<State, Event, Action> model;
-
-    using UAction = std::underlying_type_t<Action>;
-
   };
 
   template<

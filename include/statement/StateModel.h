@@ -61,6 +61,11 @@ namespace statement {
       std::integer_sequence<UAction, Is...> action_seq,
       Args&&... args)
     {
+      // TODO: @Speed.
+      // This is doing a check on every possible action at runtime. No early
+      // exit even. A simple optimisation would be to say generate a swtich
+      // statement (or at least an if/else chain) at compile time for Count < 10
+      // or something.
       auto do_action = [&](auto candidate) {
         if ((UAction)candidate.value == action) {
           handler(candidate, std::forward<Args>(args)...);
@@ -71,9 +76,9 @@ namespace statement {
 
   }
 
-  template <typename Action,
-            typename State,
+  template <typename State,
             typename Event,
+            typename Action,
             typename Handler,
             typename UAction = std::underlying_type_t<Action>,
             typename... Args>
@@ -83,6 +88,9 @@ namespace statement {
                     Event event,
                     Args&&... args)
   {
+    // TODO: @Speed
+    // This is a linear search. We could do a binary search if the model is
+    // sorted by initial state and event.
     for (const auto& transition : model) {
       if (transition.initial == state && transition.event == event) {
         state = transition.final;

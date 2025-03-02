@@ -47,12 +47,37 @@ namespace statement {
     {
       auto do_action = [&](auto candidate) {
         if ((UAction)candidate.value == action) {
-          handler(candidate, std::forward<std::decay_t<Args>>(args)...);
+          handler(candidate, std::forward<Args>(args)...);
         }
       };
       (do_action(Tag<Action, (Action)Is>{}), ...);
     }
 
+    template <typename Action,
+              typename State,
+              typename Event,
+              typename Handler,
+              typename Model,
+              typename UAction = std::underlying_type_t<Action>,
+              typename... Args>
+    void handle_event(State& state,
+                      Event event,
+                      Model&& model,
+                      Handler&& handler,
+                      Args&&... args)
+    {
+      for (const auto& transition : model) {
+        if (transition.initial == state && transition.event == event) {
+          state = transition.final;
+          dispatch_action<Action>(
+            handler,
+            (UAction)transition.action,
+            std::make_integer_sequence<UAction, (UAction)Action::Count>{},
+            std::forward<Args>(args)...);
+          return;
+        }
+      }
+    }
   }
 
   template <typename State, typename Event, typename Action>
@@ -67,8 +92,8 @@ namespace statement {
   template<typename Action, Action ActionNone=Action::None, typename... Handlers>
   static constexpr decltype(auto) make_handler(Handlers&&... handlers)
   {
-    return detail::HandlerImpl<Action, ActionNone, std::decay_t<Handlers>...>(
-      std::forward<std::decay_t<Handlers>>(handlers)...);
+    return detail::HandlerImpl<Action, ActionNone, Handlers...>(
+      std::forward<Handlers>(handlers)...);
   }
 
   template<typename State, typename Event, typename Action>
@@ -85,7 +110,7 @@ namespace statement {
     template<typename Model_, typename... Handlers>
     Manager(State initial_state, Model_&& model, Handlers&&... handlers)
       : state{initial_state}
-      , handler{std::forward<std::decay_t<Handlers>>(handlers)...}
+      , handler{std::forward<Handlers>(handlers)...}
       , model{std::forward<Model_>(model)}
     {
     }
@@ -101,17 +126,7 @@ namespace statement {
     template<typename... Args>
     void on(Event event, Args&&... args)
     {
-      for (const auto& transition : model) {
-        if (transition.initial == state && transition.event == event) {
-          state = transition.final;
-          detail::dispatch_action<Action>(
-            handler,
-            (UAction)transition.action,
-            std::make_integer_sequence<UAction, (UAction)Action::Count>{},
-            std::forward<std::decay_t<Args>>(args)...);
-          return;
-        }
-      }
+      detail::handle_event<Action>(state, event, model, handler, std::forward<Args>(args)...);
     }
 
   private:
@@ -139,17 +154,7 @@ namespace statement {
     template<typename Handler, typename... Args>
     void on(Handler&& handler, Event event, Args&&... args)
     {
-      for (const auto& transition : model) {
-        if (transition.initial == state && transition.event == event) {
-          state = transition.final;
-          detail::dispatch_action<Action>(
-            handler,
-            (UAction)transition.action,
-            std::make_integer_sequence<UAction, (UAction)Action::Count>{},
-            std::forward<std::decay_t<Args>>(args)...);
-          return;
-        }
-      }
+      detail::handle_event<Action>(state, event, model, handler, std::forward<Args>(args)...);
     }
 
   private:
@@ -163,7 +168,7 @@ namespace statement {
   Manager(State initial_state,
           Model<State, Event, Action> model,
           Handlers&&... handlers)
-    -> Manager<State, Event, Action, detail::HandlerImpl<Action, ActionNone, std::decay_t<Handlers>...>>;
+    -> Manager<State, Event, Action, detail::HandlerImpl<Action, ActionNone, Handlers...>>;
 
   template<typename State, typename Event, typename Action, Action ActionNone=Action::None>
   Manager(State initial_state,

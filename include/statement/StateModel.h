@@ -11,6 +11,18 @@ namespace statement {
   template<typename Action, Action action>
   using Tag = std::integral_constant<Action, action>;
 
+  template <typename State, typename Event, typename Action>
+  struct Transition
+  {
+    State initial;
+    Event event;
+    State final;
+    Action action;
+  };
+
+  template<typename State, typename Event, typename Action>
+  using Model = std::vector<Transition<State, Event, Action>>;
+
   namespace detail {
     template<typename Action, Action ActionNone>
     struct NoAction {
@@ -61,12 +73,11 @@ namespace statement {
               typename State,
               typename Event,
               typename Handler,
-              typename Model,
               typename UAction = std::underlying_type_t<Action>,
               typename... Args>
     void handle_event(State& state,
                       Event event,
-                      Model&& model,
+                      const Model<State, Event, Action>& model,
                       Handler&& handler,
                       Args&&... args)
     {
@@ -84,15 +95,6 @@ namespace statement {
     }
   }
 
-  template <typename State, typename Event, typename Action>
-  struct Transition
-  {
-    State initial;
-    Event event;
-    State final;
-    Action action;
-  };
-
   template<
     typename Action,
     Action ActionNone=Action::None,
@@ -102,9 +104,6 @@ namespace statement {
     return detail::HandlerImpl<Action, ActionNone, Handlers...>(
       std::forward<Handlers>(handlers)...);
   }
-
-  template<typename State, typename Event, typename Action>
-  using Model = std::vector<Transition<State, Event, Action>>;
 
   template<
     typename State,
@@ -134,11 +133,11 @@ namespace statement {
     template<typename... Args>
     void on(Event event, Args&&... args)
     {
-      detail::handle_event<Action>(state,
-                                   event,
-                                   model,
-                                   handler,
-                                   std::forward<Args>(args)...);
+      detail::handle_event(state,
+                           event,
+                           model,
+                           handler,
+                           std::forward<Args>(args)...);
     }
 
   private:
@@ -161,11 +160,11 @@ namespace statement {
     template<typename Handler, typename... Args>
     void on(Handler&& handler, Event event, Args&&... args)
     {
-      detail::handle_event<Action>(state,
-                                   event,
-                                   model,
-                                   handler,
-                                   std::forward<Args>(args)...);
+      detail::handle_event(state,
+                           event,
+                           model,
+                           handler,
+                           std::forward<Args>(args)...);
     }
 
   private:
